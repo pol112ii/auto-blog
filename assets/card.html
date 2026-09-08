@@ -1,9 +1,39 @@
-<div id="card" style="width:800px;height:420px;display:flex;
-  flex-direction:column;justify-content:center;padding:0 70px;
-  box-sizing:border-box;background:linear-gradient(135deg,#1e3a5f,#2d5a8e);
-  font-family:'Malgun Gothic',sans-serif;">
-  <div style="width:60px;height:5px;background:#FFC107;margin-bottom:28px;"></div>
-  <div style="font-size:20px;color:#9fc2e8;margin-bottom:14px;">__KEYWORD__</div>
-  <div style="font-size:44px;font-weight:800;color:#fff;line-height:1.35;
-    word-break:keep-all;">__HEADING__</div>
+<!doctype html>
+<meta charset="utf-8">
+<style>
+  html,body{margin:0;padding:0;background:#fff;}
+  #card{
+    width:800px;height:420px;box-sizing:border-box;
+    display:flex;flex-direction:column;justify-content:center;
+    padding:0 70px;overflow:hidden;
+    background:__BG__;
+    font-family:'Pretendard','Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto Sans KR','Nanum Gothic',sans-serif;
+  }
+  #bar{width:60px;height:5px;background:__ACCENT__;margin-bottom:28px;flex:none;}
+  #kw{font-size:20px;color:__SUB__;margin-bottom:14px;flex:none;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em;}
+  #hd{font-size:44px;font-weight:800;color:#fff;line-height:1.35;
+      word-break:keep-all;letter-spacing:-.02em;}
+</style>
+
+<div id="card">
+  <div id="bar"></div>
+  <div id="kw">__KEYWORD__</div>
+  <div id="hd">__HEADING__</div>
 </div>
+
+<script>
+// 긴 소제목이 카드 밖으로 넘치지 않도록 폰트를 자동으로 줄인다.
+// 카드 높이(420) 안에서 bar/kw가 쓰고 남은 만큼만 제목에 허용한다.
+(function fit(){
+  var card=document.getElementById('card'), hd=document.getElementById('hd');
+  var used=document.getElementById('bar').offsetHeight+28
+          +document.getElementById('kw').offsetHeight+14;
+  var room=card.clientHeight-used-8;
+  for(var px=44; px>=24; px-=2){
+    hd.style.fontSize=px+'px';
+    if(hd.scrollHeight<=room) break;
+  }
+  document.documentElement.setAttribute('data-fitted','1');
+})();
+</script>
