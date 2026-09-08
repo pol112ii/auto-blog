@@ -156,6 +156,18 @@ def get_access_token(env):
         sys.exit(f"액세스 토큰 발급 실패 (HTTP {e.code}): {e.read().decode(errors='replace')}")
 
 
+def resolve_blog_id(token, blog_url):
+    """블로그 주소로 blogId 를 찾는다. 관리자 페이지에서 숫자를 뒤질 필요가 없다."""
+    url = f"{API_BASE}/byurl?url={urllib.parse.quote(blog_url, safe='')}"
+    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
+    try:
+        with urllib.request.urlopen(req) as r:
+            return json.load(r)["id"]
+    except urllib.error.HTTPError as e:
+        sys.exit(f"블로그를 찾지 못했습니다 ({blog_url}, HTTP {e.code}): "
+                 f"{e.read().decode(errors='replace')}")
+
+
 def insert_post(token, blog_id, title, content, labels, is_draft):
     url = f"{API_BASE}/{blog_id}/posts/"
     if is_draft:
@@ -186,19 +198,22 @@ def main():
     ap.add_argument("--labels", help="라벨. 쉼표로 구분")
     ap.add_argument("--draft", action="store_true", help="임시저장 상태로 올린다")
     ap.add_argument("--blog-id", help=".env 의 BLOGGER_BLOG_ID 대신 쓸 블로그 ID")
+    ap.add_argument("--blog-url", help="블로그 주소. ID 대신 이것만 줘도 된다")
     ap.add_argument("--skip-link-check", action="store_true",
                     help="링크 검사를 건너뛴다 (권장하지 않음)")
     args = ap.parse_args()
+
+    env = load_env()
+    blog_id = args.blog_id or env.get("BLOGGER_BLOG_ID")
+    blog_url = args.blog_url or env.get("BLOGGER_BLOG_URL")
+    if not blog_id and not blog_url:
+        sys.exit("블로그를 지정해주세요. .env 의 BLOGGER_BLOG_ID 또는 BLOGGER_BLOG_URL,\n"
+                 "아니면 --blog-id / --blog-url 을 주세요.")
 
     path = Path(args.html)
     if not path.exists():
         sys.exit(f"파일이 없습니다: {path}")
     html = path.read_text(encoding="utf-8")
-
-    env = load_env()
-    blog_id = args.blog_id or env.get("BLOGGER_BLOG_ID")
-    if not blog_id:
-        sys.exit("블로그 ID 가 없습니다. .env 의 BLOGGER_BLOG_ID 나 --blog-id 를 주세요.")
 
     _, found_title = parse_html(html)
     title = args.title or found_title
@@ -219,6 +234,9 @@ def main():
 
     labels = [s.strip() for s in args.labels.split(",")] if args.labels else None
     token = get_access_token(env)
+    if not blog_id:
+        blog_id = resolve_blog_id(token, blog_url)
+        print(f"블로그 ID: {blog_id}  ({blog_url})", file=sys.stderr)
     post = insert_post(token, blog_id, title, html, labels, args.draft)
 
     state = "임시저장" if args.draft else "발행"
