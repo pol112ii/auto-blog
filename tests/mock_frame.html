@@ -1,0 +1,90 @@
+<!doctype html><meta charset="utf-8">
+<style>
+  body{font:14px 'Malgun Gothic',sans-serif;margin:0;padding:16px;}
+  .bar{display:flex;gap:8px;justify-content:flex-end;padding-bottom:12px;}
+  button{padding:8px 16px;cursor:pointer;}
+  .se-section-documentTitle,.se-section-text{border:1px solid #ddd;padding:12px;margin-bottom:12px;}
+  [contenteditable]{outline:none;min-height:24px;}
+  .se-section-text [contenteditable]{min-height:300px;}
+  input.se-image-file-input{display:none;}
+  .se-popup{position:fixed;inset:0;background:rgba(0,0,0,.4);
+            display:flex;align-items:center;justify-content:center;}
+  .se-popup-inner{background:#fff;padding:24px;border-radius:8px;}
+  .log{margin-top:12px;font-size:12px;color:#666;white-space:pre-wrap;}
+</style>
+
+<div class="bar">
+  <button class="save_btn">저장</button>
+  <button class="publish_btn">발행</button>
+</div>
+
+<div class="se-section-documentTitle"><div class="se-text-paragraph" contenteditable="true"></div></div>
+<div class="se-section-text"><div class="se-text-paragraph" contenteditable="true"></div></div>
+
+<input type="file" class="se-image-file-input" accept="image/*" multiple>
+<input type="text" placeholder="#태그 입력" style="width:100%;padding:8px;">
+
+<div class="log" id="log">기록:</div>
+
+<!-- 시작하자마자 뜨는 "작성 중인 글이 있습니다" 팝업 -->
+<div class="se-popup" id="continuePopup">
+  <div class="se-popup-inner">
+    <p>작성 중인 글이 있습니다. 이어서 작성하시겠습니까?</p>
+    <button class="se-popup-button-cancel">취소</button>
+    <button class="se-popup-button-confirm">확인</button>
+  </div>
+</div>
+
+<script>
+const log = (m) => document.getElementById('log').textContent += '\n' + m;
+
+document.querySelectorAll('#continuePopup button').forEach(b =>
+  b.onclick = () => { document.getElementById('continuePopup').remove();
+                      log('작성중 팝업: ' + b.textContent); });
+
+// 실제 에디터처럼 마지막 커서 위치에 이미지를 끼워 넣는다.
+const body = document.querySelector('.se-section-text [contenteditable]');
+let lastRange = null;
+document.addEventListener('selectionchange', () => {
+  const s = document.getSelection();
+  if (s.rangeCount && body.contains(s.anchorNode)) lastRange = s.getRangeAt(0).cloneRange();
+});
+
+document.querySelector('.se-image-file-input').onchange = (e) => {
+  for (const f of e.target.files) {
+    const d = document.createElement('div');
+    d.className = 'se-component se-image';
+    d.textContent = '[이미지: ' + f.name + ']';
+    if (lastRange) {
+      lastRange.insertNode(d);
+      lastRange.setStartAfter(d);
+      lastRange.collapse(true);
+    } else {
+      body.appendChild(d);
+    }
+    log('이미지 업로드: ' + f.name);
+  }
+};
+
+// 태그가 실제로 입력됐는지 기록에 남긴다 (Enter 마다 한 건)
+const tagBox = document.querySelector('input[placeholder="#태그 입력"]');
+tagBox.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && tagBox.value.trim()) {
+    log('태그 입력: ' + tagBox.value.trim());
+    tagBox.value = '';
+  }
+});
+
+document.querySelector('.save_btn').onclick = () => {
+  log('임시저장 눌림');
+  const p = document.createElement('div');
+  p.className = 'se-popup';
+  p.innerHTML = '<div class="se-popup-inner"><p>저장되었습니다.</p>' +
+                '<button class="se-popup-button-confirm">확인</button></div>';
+  document.body.appendChild(p);
+  p.querySelector('button').onclick = () => p.remove();
+};
+
+// 발행이 눌리면 시험은 실패다. 눌렸다는 사실을 남긴다.
+document.querySelector('.publish_btn').onclick = () => log('!!! 발행 눌림 !!!');
+</script>

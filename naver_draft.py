@@ -19,6 +19,7 @@
 """
 
 import argparse
+import os
 import random
 import re
 import sys
@@ -28,7 +29,7 @@ from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
-from naver_selectors import MAIN_FRAME, SEL, WRITE_URL
+from naver_selectors import MAIN_FRAME, PRESENCE_ONLY, SEL, WRITE_URL
 
 # 사람처럼 보이도록 동작 사이에 두는 간격(초)
 DELAY = (0.8, 2.4)
@@ -87,11 +88,16 @@ def copy_rendered(page, block_html, tmpdir, index):
 
 # ── 셀렉터 도우미 ──────────────────────────────────────────────────
 def find(frame, key, timeout=8000):
-    """후보 중 실제로 보이는 첫 번째 요소를 돌려준다. 없으면 None."""
+    """후보 중 쓸 수 있는 첫 번째 요소를 돌려준다. 없으면 None.
+
+    file input 처럼 원래 숨어 있는 요소는 존재만 확인한다.
+    """
+    state = "attached" if key in PRESENCE_ONLY else "visible"
+    each = max(timeout // len(SEL[key]), 500)
     for selector in SEL[key]:
         loc = frame.locator(selector).first
         try:
-            loc.wait_for(state="visible", timeout=timeout // len(SEL[key]))
+            loc.wait_for(state=state, timeout=each)
             return loc
         except Exception:
             continue
@@ -124,7 +130,8 @@ def inspect(frame):
                     if count else False
             except Exception:
                 count, visible = 0, False
-            mark = "찾음" if visible else ("있으나 안 보임" if count else "없음")
+            ok = count > 0 if key in PRESENCE_ONLY else visible
+            mark = "찾음" if ok else ("있으나 안 보임" if count else "없음")
             print(f"   {mark:14} {selector}   (개수 {count})")
         print()
     print("'찾음' 이 하나도 없는 항목은 naver_selectors.py 를 고쳐야 합니다.")
@@ -143,18 +150,24 @@ def run(args):
     print(f"본문 블록 {len(blocks)}개, 카드 이미지 {len(cards)}장")
 
     with sync_playwright() as p:
-        context = p.chromium.launch_persistent_context(
-            user_data_dir=str(args.profile),
-            channel="chrome",
-            headless=False,           # 사람이 보는 앞에서 돌린다
-            args=[f"--profile-directory={args.profile_name}"],
-            no_viewport=True,
-        )
-        context.grant_permissions(["clipboard-read", "clipboard-write"],
-                                  origin="https://blog.naver.com")
+        launch = {
+            "user_data_dir": str(args.profile),
+            "headless": args.headless,     # 평소에는 사람이 보는 앞에서 돌린다
+            "args": [f"--profile-directory={args.profile_name}"],
+            "no_viewport": True,
+        }
+        # 로그인 세션이 든 크롬을 쓴다. 없으면 playwright 크로미움으로 돌린다.
+        if os.environ.get("CHROMIUM_PATH"):
+            launch["executable_path"] = os.environ["CHROMIUM_PATH"]
+        else:
+            launch["channel"] = "chrome"
 
+        context = p.chromium.launch_persistent_context(**launch)
+        context.grant_permissions(["clipboard-read", "clipboard-write"])
+
+        target = args.target_url or WRITE_URL.format(blog_id=args.blog_id)
         editor = context.pages[0] if context.pages else context.new_page()
-        editor.goto(WRITE_URL.format(blog_id=args.blog_id))
+        editor.goto(target)
         editor.wait_for_load_state("networkidle")
         pause(LONG_DELAY)
 
@@ -165,7 +178,8 @@ def run(args):
 
         if args.inspect:
             inspect(frame)
-            input("\n확인이 끝나면 Enter 를 누르세요. 브라우저를 닫습니다.")
+            if not args.no_wait:
+                input("\n확인이 끝나면 Enter 를 누르세요. 브라우저를 닫습니다.")
             context.close()
             return
 
@@ -203,12 +217,10 @@ def run(args):
 
                 # 블록 뒤에 카드 이미지 한 장 (마지막 블록 뒤에는 넣지 않는다)
                 if i < len(cards) and i < len(blocks) - 1:
-                    upload = frame.locator(SEL["image_input"][0]).first
-                    for selector in SEL["image_input"]:
-                        loc = frame.locator(selector).first
-                        if loc.count():
-                            upload = loc
-                            break
+                    upload = find(frame, "image_input", timeout=4000)
+                    if not upload:
+                        print(f"  카드 {i + 1} 건너뜀: 업로드 입력란을 찾지 못했습니다")
+                        continue
                     upload.set_input_files(str(cards[i]))
                     print(f"  카드 {i + 1} 업로드: {cards[i].name}")
                     pause(LONG_DELAY)
@@ -242,14 +254,21 @@ def run(args):
             dismiss(frame, "popup_confirm")
             print("\n임시저장 완료.")
 
+        # 무엇이 들어갔는지 나중에 확인할 수 있게 남긴다.
+        if args.dump_frame:
+            Path(args.dump_frame).write_text(
+                frame.locator("body").inner_html(), encoding="utf-8")
+            print(f"에디터 상태를 저장했습니다: {args.dump_frame}")
+
         print("발행은 하지 않았습니다. 확인 후 직접 발행해주세요.")
-        input("Enter 를 누르면 브라우저를 닫습니다.")
+        if not args.no_wait:
+            input("Enter 를 누르면 브라우저를 닫습니다.")
         context.close()
 
 
 def main():
     ap = argparse.ArgumentParser(description="네이버 블로그 임시저장 (발행 안 함)")
-    ap.add_argument("--blog-id", required=True, help="네이버 블로그 아이디")
+    ap.add_argument("--blog-id", help="네이버 블로그 아이디")
     ap.add_argument("--html", help="[A] 원고 HTML 파일")
     ap.add_argument("--title", help="글 제목")
     ap.add_argument("--images", help="카드 이미지 폴더 (card_1.png ...)")
@@ -260,8 +279,16 @@ def main():
                     help="프로필 이름 (기본: Default)")
     ap.add_argument("--inspect", action="store_true",
                     help="셀렉터가 맞는지만 확인하고 끝낸다")
+    ap.add_argument("--target-url", help="글쓰기 주소 대신 열 페이지 (동작 점검용)")
+    ap.add_argument("--headless", action="store_true",
+                    help="창을 띄우지 않는다 (동작 점검용)")
+    ap.add_argument("--no-wait", action="store_true",
+                    help="끝나고 Enter 를 기다리지 않는다 (동작 점검용)")
+    ap.add_argument("--dump-frame", help="끝난 뒤 에디터 안 HTML 을 이 파일로 남긴다")
     args = ap.parse_args()
 
+    if not args.blog_id and not args.target_url:
+        ap.error("--blog-id 를 주세요.")
     if not args.inspect:
         missing = [n for n, v in (("--html", args.html), ("--title", args.title)) if not v]
         if missing:
