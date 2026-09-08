@@ -3,6 +3,16 @@
 각각 별도의 코드블록으로 완성 출력합니다.
 
 ═══════════════════════════════════
+■ 작업 흐름 안내
+═══════════════════════════════════
+사용자는 생성된 HTML을 CodePen에 붙여넣어 렌더링한 뒤,
+렌더링된 결과물을 마우스로 드래그·복사하여
+네이버 블로그(또는 카페) 글쓰기 창에 붙여넣습니다.
+즉 "시각적으로 렌더링된 결과"가 클립보드를 통해 옮겨지는 방식이며,
+이 과정에서 CSS margin 여백은 사라집니다.
+따라서 [A]는 반드시 실제 빈 문단으로 여백을 만들어야 합니다.
+
+═══════════════════════════════════
 ■ 입력값
 ═══════════════════════════════════
 🔑 키워드:        {{KEYWORD}}
@@ -126,6 +136,9 @@ transition:background-color .3s,transform .2s,box-shadow .3s;}
 .btn-main:hover{background-color:#0056b3;transform:scale(1.02);
 box-shadow:0 6px 15px rgba(0,91,179,.35);}
 .btn-main:active{background-color:#004494;transform:scale(.98);}
+@media (hover:none){
+.btn-main:active{background-color:#0056b3;transform:scale(1.03);
+box-shadow:0 6px 15px rgba(0,91,179,.35);}}
 </style>
 
 [버튼 재사용 형식]
@@ -163,30 +176,50 @@ box-shadow:0 6px 15px rgba(0,91,179,.35);}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ■ 최종 출력 형식 (설명 없이 아래 그대로)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-===== [A] 네이버 =====
-```html
-(코드)
+[A]와 [B]는 하나의 코드블록으로 합치지 말고,
+복사가 쉽도록 각각 별도의 마크다운 코드블록으로 분리 출력한다.
 
-▶ NAVER_TAGS: ...
+===== [A] 네이버 외부 유입용 HTML 시작 =====
+```html
+(완성된 HTML 코드)
+```
+===== [A] 네이버 외부 유입용 HTML 끝 =====
+
+▶ NAVER_TAGS: 태그1, 태그2, ... (10개)
 ▶ IMAGE_CARDS:
-...
+소제목1
+소제목2
+소제목3
 
-
-바뀐 핵심만 짚으면, 링크 환각을 막는 `[URL_확인필요]` 규칙이 들어갔고, A와 B의 역할이 "정보 숨김/공개"가 아니라 "결론/완전판"으로 갈렸습니다. 그리고 A의 CTA를 3개에서 1개로 줄였습니다. 네이버 본문에 외부 링크 배너가 여러 개 있으면 유입 자체가 줄어드는 쪽으로 작동합니다. B의 버튼도 7개에서 4개 이하로 줄이고 "목적지를 예고하는 문구"를 필수로 걸었습니다. 마지막에 `NAVER_TAGS`와 `IMAGE_CARDS`를 따로 뽑게 한 건 다음 단계 때문입니다.
-
-## 소제목 이미지 자동 생성
-
-말씀하신 "소제목을 딴 간단한 이미지"는 사진이 필요 없으니 HTML을 렌더링해서 스크린샷으로 뜨는 게 가장 깔끔합니다. 사진 소스도, 저작권도, API 비용도 없습니다.
-
-`assets/card.html` 하나 만들어두고 텍스트만 바꿔 넣으면 됩니다.
-
+===== [B] 블로그스팟용 HTML 시작 =====
 ```html
-<div id="card" style="width:800px;height:420px;display:flex;
-  flex-direction:column;justify-content:center;padding:0 70px;
-  box-sizing:border-box;background:linear-gradient(135deg,#1e3a5f,#2d5a8e);
-  font-family:'Malgun Gothic',sans-serif;">
-  <div style="width:60px;height:5px;background:#FFC107;margin-bottom:28px;"></div>
-  <div style="font-size:20px;color:#9fc2e8;margin-bottom:14px;">__KEYWORD__</div>
-  <div style="font-size:44px;font-weight:800;color:#fff;line-height:1.35;
-    word-break:keep-all;">__HEADING__</div>
-</div>
+(완성된 HTML 코드)
+```
+===== [B] 블로그스팟용 HTML 끝 =====
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+■ 최종 주의사항
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. 입력 키워드로 롱테일 SEO 제목 1개를 생성해 [A][B]에 공통 적용한다.
+2. [A]의 본문 소제목은 정확히 3개. CTA 배너는 글 전체에 1개만.
+3. [A]의 CTA href는 {{GOOGLE_URL}}로 통일, target="_blank" 유지.
+4. [B]의 모든 버튼 href는 공신력 있는 공식/정부기관 URL만 사용하고
+   전부 target="_self". 버튼 총 4개 이하, 같은 목적지 반복 금지.
+5. [B] 하단 관련 글 버튼은 href="https://information.ggudol.com/",
+   target="_self".
+6. 입력값에 없는 URL은 절대 만들지 않는다. 필요 시 [URL_확인필요].
+7. 이미지 태그 사용 금지 (텍스트 + CSS로만 구성).
+8. [B]의 버튼 스타일은 최상단에 1회만 선언하고 모든 버튼에 재사용한다.
+9. [B]의 버튼 텍스트는 모바일 한 줄 노출 기준 15자 내외로 간결하게.
+10. HTML은 복사 즉시 사용 가능한 완성형. 불필요한 설명 생략.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+■ 입력란
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔑 입력 키워드(또는 가제목): [여기에 키워드 입력]
+🔗 공식 URL:                [여기에 공식 사이트 URL 입력]
+🔗 보조 URL(선택):          [없으면 비워둘 것]
+🔗 블로그스팟 URL:          [미생성 - A글 작성 시 삽입될 부분]
+📅 작성 기준일:             [YYYY-MM-DD]
