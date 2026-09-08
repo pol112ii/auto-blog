@@ -1,6 +1,6 @@
 ---
 description: 키워드 하나로 [B] 블로그스팟 발행 + [A] 네이버 임시저장까지 한 번에
-argument-hint: [키워드] (없으면 keywords.csv 에서 자동으로 고름)
+argument-hint: [키워드] [네이버블로그아이디] — 둘 다 생략 가능
 allowed-tools: Bash, Read, Write, Edit, Glob
 ---
 
@@ -79,6 +79,14 @@ python pipeline.py cards <폴더>
 python pipeline.py naver <폴더>
 ```
 
+네이버 블로그가 여러 개다. 어디에 저장할지는 이 순서로 정해진다.
+
+1. 사용자가 `$2` 로 아이디를 줬으면 `--blog-id <아이디>` 를 붙인다
+2. keywords.csv 그 줄의 `naver_blog_id`
+3. `.env` 의 `NAVER_BLOG_ID`
+
+어느 블로그에 저장했는지 마지막 보고에 반드시 적는다.
+
 크롬 창이 뜬다. 크롬이 이미 켜져 있으면 프로필이 잠겨 실패한다.
 그때는 크롬을 닫고 이 단계만 다시 돌리라고 알린다.
 
@@ -92,6 +100,7 @@ python pipeline.py done <폴더>
 
 - 블로그스팟 주소
 - 네이버 임시저장 여부 (발행하지 않았음을 분명히 밝힌다)
+- 어느 네이버 블로그에 저장했는지
 - 작업 폴더 경로
 
 ## 실패했을 때

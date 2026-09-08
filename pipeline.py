@@ -31,7 +31,7 @@ ROOT = Path(__file__).resolve().parent
 KEYWORDS = ROOT / "keywords.csv"
 POSTS = ROOT / "posts"
 FIELDS = ["keyword", "official_url", "extra_urls", "status",
-          "google_url", "naver_done", "date"]
+          "google_url", "naver_done", "date", "naver_blog_id"]
 
 # 작업 폴더 안에 놓이는 파일들
 A_HTML = "A.html"
@@ -126,6 +126,7 @@ def cmd_init(args):
             "keyword": args.keyword,
             "official_url": row.get("official_url", ""),
             "extra_urls": row.get("extra_urls", ""),
+            "naver_blog_id": row.get("naver_blog_id", "").strip(),
             "google_url": "",
             "title": "",
             "today": today,
@@ -153,6 +154,8 @@ def cmd_status(args):
         print(f"  [{'끝남' if ok else '아직'}] {name}")
     if meta.get("google_url"):
         print(f"\n  블로그스팟: {meta['google_url']}")
+    if meta.get("naver_blog_id"):
+        print(f"  네이버 블로그: {meta['naver_blog_id']}")
     print()
 
 
@@ -224,9 +227,16 @@ def cmd_naver(args):
     if not meta.get("title"):
         sys.exit(f"{META} 의 title 이 비어 있습니다.")
 
-    blog_id = args.blog_id or load_env().get("NAVER_BLOG_ID")
+    # 블로그가 여러 개일 수 있다. 좁은 지정이 넓은 지정을 이긴다.
+    #   --blog-id  >  keywords.csv 의 naver_blog_id  >  .env 의 NAVER_BLOG_ID
+    blog_id = (args.blog_id
+               or meta.get("naver_blog_id")
+               or load_env().get("NAVER_BLOG_ID", ""))
+    blog_id = blog_id.strip()
     if not blog_id:
-        sys.exit(".env 의 NAVER_BLOG_ID 나 --blog-id 를 주세요.")
+        sys.exit("네이버 블로그를 정해주세요. --blog-id, keywords.csv 의 "
+                 "naver_blog_id, .env 의 NAVER_BLOG_ID 중 하나면 됩니다.")
+    print(f"   네이버 블로그: {blog_id}")
 
     cmd = [sys.executable, "naver_draft.py",
            "--blog-id", blog_id,
